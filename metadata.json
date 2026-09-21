@@ -1,0 +1,6 @@
+{
+  "name": "Abèy Accessories Boutique Storefront",
+  "description": "Luxury accessories, jewelry, sculptural bags, and minaudières boutique storefront featuring curated Noir & Gold collections, instant bag & jewelry filtering, product quick-view modal, interactive shopping cart, and WhatsApp concierge ordering.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
