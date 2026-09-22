@@ -226,6 +226,26 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
   });
 });
 
+app.post('/api/auth/firebase-login', (req: Request, res: Response) => {
+  const { email, name } = req.body;
+  if (!email) {
+    res.status(400).json({ error: 'Email obligatoire pour la connexion Firebase.' });
+    return;
+  }
+
+  const authResult = db.authenticateFirebaseUser(email, name);
+  if (!authResult) {
+    res.status(403).json({ error: 'Ce compte Google / Firebase n’est pas autorisé à administrer Maison Abèy.' });
+    return;
+  }
+
+  res.json({
+    message: 'Connexion Firebase réussie',
+    token: authResult.token,
+    admin: authResult.admin,
+  });
+});
+
 app.get('/api/auth/me', requireAdminAuth, (req: AuthenticatedRequest, res: Response) => {
   res.json({ admin: req.admin });
 });

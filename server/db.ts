@@ -538,6 +538,41 @@ class DatabaseService {
   }
 
   // --- Auth & Admin Sessions ---
+  public authenticateFirebaseUser(email: string, name?: string): { token: string; admin: Omit<AdminRecord, 'passwordHash' | 'salt'> } | null {
+    const cleanEmail = email.trim().toLowerCase();
+    let admin = this.data.admins.find(a => a.email.toLowerCase() === cleanEmail);
+
+    if (!admin && (cleanEmail === 'antoinejay41@gmail.com' || cleanEmail === 'owner@abeyaccessories.com')) {
+      const { hash, salt } = hashPassword(crypto.randomBytes(16).toString('hex'));
+      admin = {
+        id: `admin_${Date.now()}`,
+        email: cleanEmail,
+        name: name || 'Propriétaire Maison Abèy',
+        passwordHash: hash,
+        salt,
+        role: 'owner',
+        createdAt: new Date().toISOString(),
+      };
+      this.data.admins.push(admin);
+      this.persist(this.data);
+    }
+
+    if (!admin) return null;
+
+    const token = `abey_sec_${crypto.randomBytes(32).toString('hex')}`;
+    const session: SessionRecord = {
+      token,
+      adminId: admin.id,
+      createdAt: new Date().toISOString(),
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    };
+    this.data.sessions.push(session);
+    this.persist(this.data);
+
+    const { passwordHash, salt, ...safeAdmin } = admin;
+    return { token, admin: safeAdmin };
+  }
+
   public authenticateAdmin(email: string, pass: string): { token: string; admin: Omit<AdminRecord, 'passwordHash' | 'salt'> } | null {
     const cleanEmail = email.trim().toLowerCase();
     const admin = this.data.admins.find(a => a.email.toLowerCase() === cleanEmail);

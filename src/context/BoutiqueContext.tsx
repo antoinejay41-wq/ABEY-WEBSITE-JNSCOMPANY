@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Product, CategoryItem, SiteContent, AdminUser } from '../types';
 import { PRODUCTS, CATEGORY_CARDS, SUPPORT_PHONE_HAITI, WHATSAPP_LINK, HERO_IMAGE } from '../data/boutiqueData';
-import { fetchPublicBundle, fetchCurrentAdmin, loginAdmin, logoutAdmin } from '../services/api';
+import { fetchPublicBundle, fetchCurrentAdmin, loginAdmin, logoutAdmin, loginWithFirebaseGoogle } from '../services/api';
+import { signInWithGoogle, signOutUser } from '../lib/firebase';
 
 const DEFAULT_SITE_CONTENT: SiteContent = {
   businessName: 'Maison Abèy',
@@ -34,6 +35,7 @@ interface BoutiqueContextValue {
   isAdminAuthenticated: boolean;
   refreshPublicData: () => Promise<void>;
   login: (email: string, pass: string) => Promise<AdminUser>;
+  loginGoogle: () => Promise<AdminUser>;
   logout: () => Promise<void>;
   setAdminUser: React.Dispatch<React.SetStateAction<AdminUser | null>>;
 }
@@ -85,8 +87,20 @@ export const BoutiqueProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return res.admin;
   };
 
+  const loginGoogle = async (): Promise<AdminUser> => {
+    const user = await signInWithGoogle();
+    if (!user || !user.email) {
+      throw new Error('Connexion Google annulée ou impossible.');
+    }
+    const res = await loginWithFirebaseGoogle(user.email, user.displayName || undefined);
+    setAdminUser(res.admin);
+    await refreshPublicData();
+    return res.admin;
+  };
+
   const logout = async (): Promise<void> => {
     await logoutAdmin();
+    await signOutUser().catch(() => {});
     setAdminUser(null);
   };
 
@@ -101,6 +115,7 @@ export const BoutiqueProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isAdminAuthenticated: !!adminUser,
         refreshPublicData,
         login,
+        loginGoogle,
         logout,
         setAdminUser,
       }}

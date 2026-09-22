@@ -1,0 +1,237 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A luxury jewelry or accessory item in the catalog",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique product identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Product display title",
+          "maxLength": 150
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category key",
+          "maxLength": 60
+        },
+        "price": {
+          "type": "number",
+          "description": "Price in USD"
+        },
+        "image": {
+          "type": "string",
+          "description": "Primary high-resolution image URL or data URI",
+          "maxLength": 2048
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of craftsmanship",
+          "maxLength": 3000
+        },
+        "material": {
+          "type": "string",
+          "description": "Material composition (e.g. Or 18K plaqué, Laiton martelé)",
+          "maxLength": 100
+        },
+        "tag": {
+          "type": "string",
+          "description": "Badge or tag label",
+          "maxLength": 50
+        },
+        "inStock": {
+          "type": "boolean",
+          "description": "Whether the piece is in stock"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["id", "name", "category", "price", "image", "description", "inStock"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A boutique category grouping",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique category identifier"
+        },
+        "title": {
+          "type": "string",
+          "description": "Category display name",
+          "maxLength": 80
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Editorial subtitle",
+          "maxLength": 150
+        },
+        "image": {
+          "type": "string",
+          "description": "Category visual banner image",
+          "maxLength": 2048
+        }
+      },
+      "required": ["id", "title", "image"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order submitted through the storefront or WhatsApp concierge",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique order ID"
+        },
+        "reference": {
+          "type": "string",
+          "description": "Human-readable order reference code (e.g. ABEY-XXXXXX)",
+          "maxLength": 32
+        },
+        "token": {
+          "type": "string",
+          "description": "Security token to view the order summary",
+          "maxLength": 64
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Customer full name",
+          "maxLength": 120
+        },
+        "customerWhatsApp": {
+          "type": "string",
+          "description": "WhatsApp phone number for order verification",
+          "maxLength": 40
+        },
+        "customerCity": {
+          "type": "string",
+          "description": "City for delivery",
+          "maxLength": 80
+        },
+        "customerCountry": {
+          "type": "string",
+          "description": "Country for delivery",
+          "maxLength": 60
+        },
+        "shippingMethod": {
+          "type": "string",
+          "description": "Selected shipping method",
+          "maxLength": 60
+        },
+        "subtotal": {
+          "type": "number",
+          "description": "Subtotal amount"
+        },
+        "shippingCost": {
+          "type": "number",
+          "description": "Delivery fee"
+        },
+        "discount": {
+          "type": "number",
+          "description": "Discount applied"
+        },
+        "total": {
+          "type": "number",
+          "description": "Total charged in chosen currency"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code (USD, HTG, EUR)",
+          "maxLength": 10
+        },
+        "status": {
+          "type": "string",
+          "description": "Order processing status",
+          "enum": ["new", "confirmed", "processing", "shipped", "delivered", "cancelled"]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of order creation"
+        }
+      },
+      "required": ["id", "reference", "token", "customerName", "customerWhatsApp", "total", "currency", "status", "createdAt"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Designated administrator profile authorized to manage store data",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "User identifier matching auth UID"
+        },
+        "email": {
+          "type": "string",
+          "description": "Admin email address",
+          "maxLength": 150
+        },
+        "role": {
+          "type": "string",
+          "description": "Role level",
+          "enum": ["owner", "admin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of creation"
+        }
+      },
+      "required": ["id", "email", "role"]
+    },
+    "SiteContent": {
+      "title": "SiteContent",
+      "description": "Storefront editorial configuration and contact details",
+      "type": "object",
+      "properties": {
+        "businessName": {
+          "type": "string",
+          "description": "Store brand name",
+          "maxLength": 100
+        },
+        "announcementTicker": {
+          "type": "string",
+          "description": "Top promotional message",
+          "maxLength": 300
+        },
+        "whatsappNumber": {
+          "type": "string",
+          "description": "WhatsApp phone number for concierge",
+          "maxLength": 40
+        }
+      },
+      "required": ["businessName"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of products shown in the catalog"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Collection of product categories"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer orders with order references and line items"
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "List of authorized administrator accounts"
+    },
+    "/siteContent/{contentId}": {
+      "schema": "SiteContent",
+      "description": "Global storefront settings and branding content"
+    }
+  }
+}

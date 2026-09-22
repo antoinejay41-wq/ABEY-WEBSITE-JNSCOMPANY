@@ -1,4 +1,6 @@
 import { Product, CategoryItem, SiteContent, AdminUser, Order, OrderStatus } from '../types';
+import { doc, setDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
 const TOKEN_KEY = 'abey_owner_auth_token';
 
@@ -50,6 +52,22 @@ export async function loginAdmin(email: string, pass: string): Promise<{ token: 
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error || 'Erreur lors de la connexion');
+  }
+
+  setAuthToken(data.token);
+  return { token: data.token, admin: data.admin };
+}
+
+export async function loginWithFirebaseGoogle(email: string, name?: string): Promise<{ token: string; admin: AdminUser }> {
+  const res = await fetch('/api/auth/firebase-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, name }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Erreur lors de la connexion Firebase Google');
   }
 
   setAuthToken(data.token);
@@ -387,6 +405,30 @@ export async function createOrder(payload: CreateOrderPayload): Promise<{
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error || 'Erreur lors de l’enregistrement de la commande');
+  }
+
+  // Synchronize order to Firestore cloud collection
+  try {
+    const cleanOrderId = data.order.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+    await setDoc(doc(db, 'orders', cleanOrderId), {
+      id: cleanOrderId,
+      reference: data.order.reference,
+      token: data.order.token,
+      customerName: data.order.customerName,
+      customerWhatsApp: data.order.customerWhatsApp,
+      customerCity: data.order.customerCity || '',
+      customerCountry: data.order.customerCountry || '',
+      shippingMethod: data.order.shippingMethod || '',
+      subtotal: data.order.subtotal,
+      shippingCost: data.order.shippingCost,
+      discount: data.order.discount,
+      total: data.order.total,
+      currency: data.order.currency,
+      status: data.order.status,
+      createdAt: data.order.createdAt,
+    });
+  } catch (firestoreErr) {
+    console.warn('Firestore cloud sync notice:', firestoreErr);
   }
 
   return data;
