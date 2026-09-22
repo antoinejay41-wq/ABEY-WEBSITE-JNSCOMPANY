@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, ArrowRight, Sparkles, ArrowLeft, Key } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, ArrowRight, Sparkles, ArrowLeft } from 'lucide-react';
 import { useBoutique } from '../../context/BoutiqueContext';
 
 interface AdminLoginProps {
@@ -9,7 +9,7 @@ interface AdminLoginProps {
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) => {
   const { login } = useBoutique();
-  const [email, setEmail] = useState('owner@abeyaccessories.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +89,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="owner@abeyaccessories.com"
+                placeholder="direction@abeyaccessories.com"
                 className="w-full bg-neutral-950 border border-neutral-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-honey-gold focus:ring-1 focus:ring-honey-gold transition-colors"
               />
             </div>
@@ -133,18 +133,10 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
           </button>
         </form>
 
-        {/* First time credentials guide */}
-        <div className="pt-4 border-t border-neutral-800 space-y-2 text-[11px] text-neutral-400 bg-neutral-950/40 p-3.5 rounded-xl border">
-          <div className="flex items-center gap-1.5 font-semibold text-honey-gold">
-            <Key className="w-3.5 h-3.5" />
-            <span>Identifiants par défaut initialisés :</span>
-          </div>
-          <div className="space-y-1 font-mono text-[10.5px] text-neutral-300">
-            <div>Email : <span className="text-white select-all">owner@abeyaccessories.com</span> (ou <span className="text-white select-all">antoinejay41@gmail.com</span>)</div>
-            <div>Mot de passe : <span className="text-honey-gold select-all font-bold">AbeyAdmin2026!</span></div>
-          </div>
-          <p className="text-[10px] text-neutral-500 italic pt-1">
-            * Vous pourrez changer votre mot de passe à tout moment dans l'onglet « Paramètres » du tableau de bord.
+        <div className="pt-4 border-t border-neutral-800 text-center">
+          <p className="text-[11px] text-neutral-500 flex items-center justify-center gap-1.5">
+            <Lock className="w-3 h-3 text-honey-gold/80" />
+            <span>Portail chiffré et sécurisé · Accès restreint</span>
           </p>
         </div>
       </div>

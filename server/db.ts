@@ -418,7 +418,7 @@ class DatabaseService {
       this.data.admins.push(ownerUser);
 
       this.persist(this.data);
-      console.log('Created default admin accounts: owner@abeyaccessories.com & antoinejay41@gmail.com (Password: AbeyAdmin2026!)');
+      console.log('Admin accounts initialized securely for store ownership.');
     }
   }
 
