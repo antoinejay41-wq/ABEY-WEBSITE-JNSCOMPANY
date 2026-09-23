@@ -42,15 +42,15 @@ Cette application web moderne associe l'esthétique raffinée du luxe contempora
 - **Icônes :** [Lucide React](https://lucide.dev/)
 - **Animations :** [Motion](https://motion.dev/)
 - **Backend Serveur :** [Express](https://expressjs.com/), [tsx](https://github.com/privatenumber/tsx), [esbuild](https://esbuild.github.io/)
-- **Base de Données & Authentification Cloud :** [Firebase](https://firebase.google.com/) (Projet `shaped-bindery-8w1xt`, Firestore multirégion `us-east1`, Firebase Auth & Google Sign-In)
+- **Base de Données & Authentification Cloud :** [Firebase](https://firebase.google.com/) (Projet `abey-accessories-boutique`, Firestore, Firebase Auth & Google Sign-In)
 
 ---
 
 ## ☁️ Intégration Firebase & Domaine Personnalisé
 
-L'application est connectée au projet Firebase `shaped-bindery-8w1xt` avec Firestore et Firebase Auth :
+L'application est configurée avec le projet Firebase `abey-accessories-boutique` :
 
-- **Configuration :** Le fichier `firebase-applet-config.json` contient les clés d'accès et l'identifiant de la base de données Firestore.
+- **Configuration :** Le fichier `firebase-applet-config.json` contient les clés d'accès (`abey-accessories-boutique`, `authDomain: abey-accessories-boutique.firebaseapp.com`, etc.).
 - **Règles de sécurité Firestore (`firestore.rules`) :** Déployées et configurées avec protection stricte des collections `products`, `categories`, `orders` et `admins`.
 - **Schéma de données (`firebase-blueprint.json`) :** Modélise les entités pour une persistance durable dans le Cloud.
 - **Connexion Administrateur Firebase :** Le portail d'administration supporte la connexion en un clic avec Google (Firebase Auth) pour l'adresse propriétaire (`antoinejay41@gmail.com` ou compte administrateur).
@@ -59,7 +59,7 @@ L'application est connectée au projet Firebase `shaped-bindery-8w1xt` avec Fire
 
 Si vous utilisez votre propre nom de domaine (par exemple `abeyaccessories.com` ou sous-domaine Vercel / Cloudflare) :
 
-1. Rendez-vous sur la [Console Firebase](https://console.firebase.google.com/project/shaped-bindery-8w1xt/authentication/settings).
+1. Rendez-vous sur la [Console Firebase](https://console.firebase.google.com/project/abey-accessories-boutique/authentication/settings).
 2. Cliquez sur l'onglet **Authentication** puis **Settings** (Paramètres).
 3. Ouvrez la section **Authorized domains** (Domaines autorisés).
 4. Cliquez sur **Add domain** et saisissez votre nom de domaine (ex: `abeyaccessories.com`, `www.abeyaccessories.com`, ou votre URL personnalisée de déploiement).

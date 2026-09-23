@@ -6,8 +6,11 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with specific database ID (CRITICAL)
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Initialize Firestore (supporting default database or named database instance)
+export const db =
+  firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+    : getFirestore(app);
 
 // Initialize Authentication
 export const auth = getAuth(app);
@@ -78,7 +81,29 @@ export async function signInWithGoogle() {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'auth/unauthorized-domain' || error?.message?.includes('auth/unauthorized-domain')) {
+      const currentDomain = typeof window !== 'undefined' ? window.location.hostname : '';
+      console.warn(
+        `[Firebase Auth] Domain not authorized: "${currentDomain}". To authorize, visit Firebase Console > Authentication > Settings > Authorized domains.`
+      );
+      const customErr = new Error(
+        `Le domaine "${currentDomain}" doit être ajouté aux « Domaines autorisés » dans votre console Firebase Authentication.`
+      );
+      (customErr as any).code = 'auth/unauthorized-domain';
+      (customErr as any).domain = currentDomain;
+      throw customErr;
+    }
+    if (error?.code === 'auth/popup-blocked' || error?.message?.includes('auth/popup-blocked')) {
+      console.warn(
+        `[Firebase Auth] Popup blocked by browser or iframe sandbox. Suggesting 1-click fallback or unblocking popups.`
+      );
+      const customErr = new Error(
+        `La fenêtre pop-up Google a été bloquée par votre navigateur ou le conteneur sécurisé.`
+      );
+      (customErr as any).code = 'auth/popup-blocked';
+      throw customErr;
+    }
     console.error('Google Sign-In Error:', error);
     throw error;
   }
