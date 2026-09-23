@@ -221,6 +221,12 @@
       "adminId": "admin_antoine_owner",
       "createdAt": "2026-09-23T15:15:41.547Z",
       "expiresAt": 1790781341547
+    },
+    {
+      "token": "abey_sec_53c41d42a67be38d82f4713daa1e9f992f3bcf4c2198d440dcb1e177c09b61c1",
+      "adminId": "admin_antoine_owner",
+      "createdAt": "2026-09-23T17:58:05.449Z",
+      "expiresAt": 1790791085449
     }
   ],
   "orders": []

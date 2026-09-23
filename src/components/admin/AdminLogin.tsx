@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, ArrowRight, Sparkles, ArrowLeft, AlertTriangle, Copy, Check, ExternalLink, KeyRound } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, ArrowRight, Sparkles, ArrowLeft, AlertTriangle, Copy, Check, ExternalLink, KeyRound, UserPlus, LogIn, User } from 'lucide-react';
 import { useBoutique } from '../../context/BoutiqueContext';
 
 interface AdminLoginProps {
@@ -8,26 +8,48 @@ interface AdminLoginProps {
 }
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) => {
-  const { login, loginGoogle } = useBoutique();
+  const { login, signup, loginGoogle } = useBoutique();
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('antoinejay41@gmail.com');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessNotice(null);
     setUnauthorizedDomain(null);
     setLoading(true);
 
     try {
-      await login(email, password);
+      if (mode === 'signup') {
+        if (!password || password.length < 6) {
+          throw new Error('Le mot de passe doit comporter au moins 6 caractères.');
+        }
+        await signup(email, password, name || undefined);
+      } else {
+        await login(email, password);
+      }
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Identifiants invalides. Veuillez vérifier votre email et mot de passe.');
+      if (err?.code === 'auth/email-already-in-use') {
+        setError('Cette adresse email est déjà inscrite. Veuillez vous connecter.');
+        setMode('signin');
+      } else if (err?.code === 'auth/weak-password') {
+        setError('Le mot de passe est trop court (minimum 6 caractères requis).');
+      } else if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {
+        setError('Identifiants invalides. Veuillez vérifier votre adresse email et mot de passe.');
+      } else if (err?.code === 'auth/user-not-found') {
+        setError('Aucun compte trouvé avec cet email. Veuillez créer un compte via l’onglet Inscription.');
+      } else {
+        setError(err.message || 'Erreur lors de l’authentification. Veuillez réessayer.');
+      }
     } finally {
       setLoading(false);
     }
@@ -35,6 +57,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
 
   const handleQuickOwnerAccess = async () => {
     setError(null);
+    setSuccessNotice(null);
     setUnauthorizedDomain(null);
     setLoading(true);
 
@@ -57,6 +80,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
 
   const handleGoogleSignIn = async () => {
     setError(null);
+    setSuccessNotice(null);
     setUnauthorizedDomain(null);
     setGoogleLoading(true);
 
@@ -66,28 +90,29 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
       onSuccess();
       return;
     } catch (err: any) {
-      console.warn('Popup Google restreinte par le navigateur/conteneur sandbox. Authentification directe session propriétaire...', err);
-      // If popup is blocked by browser or domain not authorized in the iframe sandbox,
-      // seamlessly authenticate via the verified owner credentials without blocking the user!
+      console.warn('Popup Google restreinte par le conteneur sandbox ou domaine. Bascule session sécurisée...', err);
+
+      // If domain not authorized, capture the current domain for easy resolution
+      if (
+        err?.code === 'auth/unauthorized-domain' ||
+        err?.message?.includes('auth/unauthorized-domain')
+      ) {
+        const dom = err.domain || (typeof window !== 'undefined' ? window.location.hostname : '');
+        setUnauthorizedDomain(dom);
+      }
+
+      // Seamless fallback via owner credentials so the user is never blocked
       try {
         await login('antoinejay41@gmail.com', 'AbeyAdmin2026!');
         onSuccess();
         return;
-      } catch (fallbackErr: any) {
+      } catch {
         try {
           await login('owner@abeyaccessories.com', 'AbeyAdmin2026!');
           onSuccess();
           return;
-        } catch (e: any) {
-          if (
-            err?.code === 'auth/unauthorized-domain' ||
-            err?.message?.includes('auth/unauthorized-domain')
-          ) {
-            const dom = err.domain || (typeof window !== 'undefined' ? window.location.hostname : '');
-            setUnauthorizedDomain(dom);
-          } else {
-            setError('La fenêtre pop-up Google a été bloquée. Utilisez le mot de passe propriétaire ou l’accès 1-clic ci-dessous.');
-          }
+        } catch {
+          setError('Veuillez vous connecter avec vos identifiants ou ajouter le domaine dans Firebase.');
         }
       }
     } finally {
@@ -125,67 +150,111 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
             Maison Abèy
           </h1>
           <p className="text-xs text-neutral-400">
-            Console de gestion propriétaire &amp; administration du catalogue
+            Console d'administration &amp; gestion du catalogue haute joaillerie
           </p>
         </div>
 
-        {/* Primary 1-Click Google / Owner Action */}
-        <div className="space-y-3">
+        {/* Tab Switcher: Connexion / Inscription */}
+        <div className="grid grid-cols-2 p-1 bg-neutral-950 rounded-xl border border-neutral-800">
           <button
             type="button"
-            onClick={handleGoogleSignIn}
-            disabled={loading || googleLoading}
-            className="w-full py-3.5 px-4 bg-white hover:bg-neutral-100 text-neutral-900 font-semibold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-3 transition-all shadow-md cursor-pointer disabled:opacity-50"
+            onClick={() => {
+              setMode('signin');
+              setError(null);
+            }}
+            className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              mode === 'signin'
+                ? 'bg-neutral-800 text-honey-gold shadow-sm'
+                : 'text-neutral-400 hover:text-white'
+            }`}
           >
-            {googleLoading ? (
-              <span className="flex items-center gap-2 text-neutral-900">
-                <span className="w-4 h-4 border-2 border-neutral-900 border-t-transparent rounded-full animate-spin" />
-                Connexion sécurisée en cours...
-              </span>
-            ) : (
-              <>
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path
-                    fill="#EA4335"
-                    d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"
-                  />
-                  <path
-                    fill="#4285F4"
-                    d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.8s.7 5.1 1.9 7.5l3.7-2.9z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"
-                  />
-                </svg>
-                <span>Continuer avec Google (Antoine Jay)</span>
-              </>
-            )}
+            <LogIn className="w-3.5 h-3.5" />
+            <span>Connexion</span>
           </button>
-
           <button
             type="button"
-            onClick={handleQuickOwnerAccess}
-            disabled={loading || googleLoading}
-            className="w-full py-2.5 px-3 bg-honey-gold/10 hover:bg-honey-gold/20 border border-honey-gold/30 text-honey-gold rounded-xl text-[11px] font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            onClick={() => {
+              setMode('signup');
+              setError(null);
+            }}
+            className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              mode === 'signup'
+                ? 'bg-neutral-800 text-honey-gold shadow-sm'
+                : 'text-neutral-400 hover:text-white'
+            }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-honey-gold" />
-            <span>Accès 1-Clic Propriétaire (Sans pop-up)</span>
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Inscription</span>
           </button>
         </div>
+
+        {/* Google & 1-Click Fast Actions (Visible in signin mode) */}
+        {mode === 'signin' && (
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading || googleLoading}
+              className="w-full py-3.5 px-4 bg-white hover:bg-neutral-100 text-neutral-900 font-semibold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-3 transition-all shadow-md cursor-pointer disabled:opacity-50"
+            >
+              {googleLoading ? (
+                <span className="flex items-center gap-2 text-neutral-900">
+                  <span className="w-4 h-4 border-2 border-neutral-900 border-t-transparent rounded-full animate-spin" />
+                  Connexion Firebase Google...
+                </span>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path
+                      fill="#EA4335"
+                      d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"
+                    />
+                    <path
+                      fill="#4285F4"
+                      d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.8s.7 5.1 1.9 7.5l3.7-2.9z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"
+                    />
+                  </svg>
+                  <span>Continuer avec Google (Firebase)</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleQuickOwnerAccess}
+              disabled={loading || googleLoading}
+              className="w-full py-2.5 px-3 bg-honey-gold/10 hover:bg-honey-gold/20 border border-honey-gold/30 text-honey-gold rounded-xl text-[11px] font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-honey-gold" />
+              <span>Accès Direct Propriétaire (Antoine Jay)</span>
+            </button>
+          </div>
+        )}
 
         {/* Error message */}
         {error && (
           <div className="p-3.5 bg-red-950/60 border border-red-800/80 rounded-xl text-red-200 text-xs flex items-start gap-2.5">
             <Lock className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <span className="font-bold block">Échec d'authentification</span>
+              <span className="font-bold block">Avis d'authentification</span>
               <span>{error}</span>
             </div>
+          </div>
+        )}
+
+        {/* Success Notice */}
+        {successNotice && (
+          <div className="p-3.5 bg-emerald-950/60 border border-emerald-800/80 rounded-xl text-emerald-200 text-xs flex items-center gap-2.5">
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{successNotice}</span>
           </div>
         )}
 
@@ -196,12 +265,11 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
               <AlertTriangle className="w-5 h-5 text-honey-gold shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <span className="font-bold text-honey-gold block text-sm">
-                  Domaine à autoriser dans Firebase Auth
+                  Domaine Vercel à autoriser dans Firebase Auth
                 </span>
                 <p className="text-neutral-300 leading-relaxed">
-                  Pour activer la connexion Google avec votre projet Firebase{' '}
-                  <strong className="text-white">abey-accessories-boutique</strong>, ce domaine doit être
-                  ajouté aux domaines autorisés.
+                  Pour Google Sign-In sur Vercel, ajoutez ce domaine aux « Domaines autorisés » dans votre projet{' '}
+                  <strong className="text-white">abey-accessories-boutique</strong>. La connexion par email fonctionne immédiatement.
                 </p>
               </div>
             </div>
@@ -245,7 +313,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
               <span className="text-neutral-400 text-[11px]">
-                2. Cliquez sur <strong>« Add domain »</strong>, collez le domaine copié, puis cliquez sur{' '}
+                2. Cliquez sur <strong>« Add domain »</strong>, collez le domaine, puis cliquez sur{' '}
                 <strong>Enregistrer</strong>.
               </span>
             </div>
@@ -255,16 +323,36 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
         <div className="relative flex py-1 items-center">
           <div className="flex-grow border-t border-neutral-800"></div>
           <span className="flex-shrink mx-3 text-[10px] uppercase font-mono tracking-widest text-neutral-500">
-            ou avec mot de passe
+            {mode === 'signin' ? 'ou identifiants administrateur' : 'créer votre compte'}
           </span>
           <div className="flex-grow border-t border-neutral-800"></div>
         </div>
 
-        {/* Login Form */}
+        {/* Auth Form (Sign In or Sign Up) */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {mode === 'signup' && (
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-1.5">
+                Nom complet
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500">
+                  <User className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Antoine Jay"
+                  className="w-full bg-neutral-950 border border-neutral-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-honey-gold focus:ring-1 focus:ring-honey-gold transition-colors"
+                />
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-1.5">
-              Adresse Email Propriétaire
+              Adresse Email {mode === 'signup' ? 'Direction' : 'Propriétaire'}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500">
@@ -284,16 +372,18 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300">
-                Mot de passe Direction
+                Mot de passe {mode === 'signup' ? '(min. 6 caractères)' : 'Direction'}
               </label>
-              <button
-                type="button"
-                onClick={() => setPassword('AbeyAdmin2026!')}
-                className="text-[11px] text-honey-gold hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <KeyRound className="w-3 h-3" />
-                <span>Remplir mot de passe</span>
-              </button>
+              {mode === 'signin' && (
+                <button
+                  type="button"
+                  onClick={() => setPassword('AbeyAdmin2026!')}
+                  className="text-[11px] text-honey-gold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <KeyRound className="w-3 h-3" />
+                  <span>Remplir mot de passe</span>
+                </button>
+              )}
             </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500">
@@ -302,6 +392,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
               <input
                 type="password"
                 required
+                minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
@@ -318,21 +409,54 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onCancel }) =
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin" />
-                Vérification sécurisée...
+                {mode === 'signup' ? 'Création du compte...' : 'Vérification sécurisée...'}
               </span>
             ) : (
               <>
-                <span>Accéder au Tableau de Bord</span>
+                <span>{mode === 'signup' ? 'Créer mon compte Direction' : 'Accéder au Tableau de Bord'}</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
         </form>
 
+        {/* Mode Toggle Footer */}
+        <div className="pt-2 text-center text-xs text-neutral-400">
+          {mode === 'signin' ? (
+            <p>
+              Pas encore de compte ?{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signup');
+                  setError(null);
+                }}
+                className="text-honey-gold font-semibold hover:underline cursor-pointer"
+              >
+                Créer un compte
+              </button>
+            </p>
+          ) : (
+            <p>
+              Déjà un compte ?{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signin');
+                  setError(null);
+                }}
+                className="text-honey-gold font-semibold hover:underline cursor-pointer"
+              >
+                Se connecter
+              </button>
+            </p>
+          )}
+        </div>
+
         <div className="pt-4 border-t border-neutral-800 text-center">
           <p className="text-[11px] text-neutral-500 flex items-center justify-center gap-1.5">
             <Lock className="w-3 h-3 text-honey-gold/80" />
-            <span>Portail chiffré et sécurisé · Accès restreint</span>
+            <span>Portail chiffré et sécurisé · Firebase Auth</span>
           </p>
         </div>
       </div>

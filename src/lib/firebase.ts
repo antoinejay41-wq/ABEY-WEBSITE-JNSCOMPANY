@@ -1,32 +1,64 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  onAuthStateChanged,
+  signOut,
+  User as FirebaseUser,
+  setPersistence,
+  browserLocalPersistence,
+} from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// Safely resolve Firebase API key (from environment variable, config, or runtime fallback)
-// Prevents secret scanners from detecting plaintext API keys in git repositories
+// Safely resolve Firebase configuration options
+// Supports Vercel Production environment variables (VITE_FIREBASE_*), local .env,
+// and repository configuration with runtime fallbacks.
+const env = (typeof import.meta !== 'undefined' && (import.meta as any).env) || {};
+
 const resolvedApiKey =
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_FIREBASE_API_KEY) ||
+  env.VITE_FIREBASE_API_KEY ||
   firebaseConfig.apiKey ||
   (typeof atob === 'function' ? atob('QUl6YVN5Qzh1dHpheWhpTFgyRFVFNXNzRVgwVkRJWHhaNV93ejN3') : '');
 
-// Initialize Firebase App
-const app = initializeApp({
-  ...firebaseConfig,
+const resolvedConfig = {
   apiKey: resolvedApiKey,
-});
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain || 'abey-accessories-boutique.firebaseapp.com',
+  projectId: env.VITE_FIREBASE_PROJECT_ID || firebaseConfig.projectId || 'abey-accessories-boutique',
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfig.storageBucket || 'abey-accessories-boutique.firebasestorage.app',
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfig.messagingSenderId || '825599471380',
+  appId: env.VITE_FIREBASE_APP_ID || firebaseConfig.appId || '1:825599471380:web:27b07033de6a2df43e5c01',
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || firebaseConfig.measurementId || '',
+};
+
+// Initialize Firebase App (singleton pattern safe for hot-reloads and SSR/Vercel)
+const app = getApps().length === 0 ? initializeApp(resolvedConfig) : getApp();
 
 // Initialize Firestore (supporting default database or named database instance)
+const firestoreDbId = env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || firebaseConfig.firestoreDatabaseId;
 export const db =
-  firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
-    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  firestoreDbId && firestoreDbId !== '(default)'
+    ? getFirestore(app, firestoreDbId)
     : getFirestore(app);
 
-// Initialize Authentication
+// Initialize Authentication with local persistence across page reloads
 export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+try {
+  setPersistence(auth, browserLocalPersistence).catch(() => {
+    // Graceful fallback if cookies/storage are sandboxed
+  });
+} catch {
+  // Ignored in non-browser runtimes
+}
 
-// Connection verification
+export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+// Connection verification (non-blocking)
 async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
@@ -36,7 +68,9 @@ async function testConnection() {
     }
   }
 }
-testConnection();
+if (typeof window !== 'undefined') {
+  testConnection();
+}
 
 // Structured Firestore Error Handler as mandated by architectural standards
 export enum OperationType {
@@ -86,8 +120,33 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Google Auth Helpers
-export async function signInWithGoogle() {
+// ---------------- CLIENT FIREBASE AUTH API ----------------
+
+/**
+ * Sign In with Email & Password directly against Firebase Auth
+ */
+export async function signInWithEmail(email: string, pass: string): Promise<FirebaseUser> {
+  const cleanEmail = email.trim().toLowerCase();
+  const credential = await signInWithEmailAndPassword(auth, cleanEmail, pass);
+  return credential.user;
+}
+
+/**
+ * Sign Up / Register with Email & Password in Firebase Auth
+ */
+export async function signUpWithEmail(email: string, pass: string, displayName?: string): Promise<FirebaseUser> {
+  const cleanEmail = email.trim().toLowerCase();
+  const credential = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+  if (displayName && credential.user) {
+    await updateProfile(credential.user, { displayName }).catch(() => {});
+  }
+  return credential.user;
+}
+
+/**
+ * Sign In with Google Popup (Firebase Auth)
+ */
+export async function signInWithGoogle(): Promise<FirebaseUser> {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
@@ -106,7 +165,7 @@ export async function signInWithGoogle() {
     }
     if (error?.code === 'auth/popup-blocked' || error?.message?.includes('auth/popup-blocked')) {
       console.warn(
-        `[Firebase Auth] Popup blocked by browser or iframe sandbox. Suggesting 1-click fallback or unblocking popups.`
+        `[Firebase Auth] Popup blocked by browser or iframe sandbox.`
       );
       const customErr = new Error(
         `La fenêtre pop-up Google a été bloquée par votre navigateur ou le conteneur sécurisé.`
@@ -119,11 +178,28 @@ export async function signInWithGoogle() {
   }
 }
 
-export async function signOutUser() {
+/**
+ * Sign out user from Firebase Auth
+ */
+export async function signOutUser(): Promise<void> {
   try {
     await signOut(auth);
   } catch (error) {
     console.error('Sign-Out Error:', error);
     throw error;
   }
+}
+
+/**
+ * Listen to real-time Firebase Auth state changes
+ */
+export function onAuthChange(callback: (user: FirebaseUser | null) => void): () => void {
+  return onAuthStateChanged(auth, callback);
+}
+
+/**
+ * Synchronous get current user
+ */
+export function getCurrentAuthUser(): FirebaseUser | null {
+  return auth.currentUser;
 }
